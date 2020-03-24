@@ -1,27 +1,3 @@
-% p value < 0.1%
-% E and EQNR
-% COP and PBR
-% CEO and EQNR
-
-% plot E and EQNR
-
-%{
-plot(dates, Eprice);
-hold on
-plot(dates, EQNRprice);
-title('E and EQNR');
-xlabel('Date');
-ylabel('Price');
-legend('E', 'EQNR');
-hold off
-figure;
-ratio = Eprice ./ EQNRprice;
-plot(dates, ratio);
-title('E/EQNR');
-xlabel('Date');
-ylabel('E/EQNR');
-%}
-
 % 2001-2003: days 1:637
 % 2004-2006: days 638:1392
 % 2007-2009: days 1393:2149
