@@ -131,5 +131,4 @@ figure;
 plot(cumprod(1+ret)-1); % Cumulative compounded return
 title('EQNR/CEO Kalman Filter Cumulative Compounded Return (2001-2003)');
 fprintf(1, 'APR=%f Sharpe=%f\n', prod(1+ret).^(252/length(ret))-1, sqrt(252)*mean(ret)/std(ret));
-% APR=0.262252 Sharpe=2.361162
 
