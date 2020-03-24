@@ -33,7 +33,7 @@ def get_moving_average(ratio_lst, window_size):
     return moving_average, moving_average_lst
 
 
-def bollinger_bands(ratio_lst, window_size, num_sd=1):
+def bollinger_bands(ratio_lst, window_size, num_sd=1.4):
     ratio = pd.DataFrame(ratio_lst)
     moving_average, moving_average_lst = get_moving_average(ratio_lst, window_size)
     moving_sd = ratio.rolling(window=window_size).std()
@@ -73,41 +73,74 @@ def trade_simple(ratio, stock1, stock2, index):
     return case, cur_score
 
 
-def testing(ratio, stock1, stock2, model, const):
-    netGains = 0
+def testing(start,ratio, stock1, stock2, model, starting_amount, const): # const should be >5
+    portfolio_value = starting_amount
     stock1_owned = 0
     stock2_owned = 0
     case = 0
     cur_score = 0
-
-    for i in range(0, len(ratio)):
+    buy_time = []
+    buy_price = []
+    sell_time = []
+    sell_price = []
+    for i in range(start, len(ratio)):
+        print(portfolio_value)
         if (model == 1):  # simple
             case, cur_score = trade_simple(ratio, stock1, stock2, i)
         else:
             case, cur_score = trade_moving(ratio, stock1, stock2, i)
         if (case == 1):
-            stock1_owned -= min(stock1_owned, cur_score * const)
-            netGains += cur_score * stock1[i] * const
+            sell_time.append(i)
+            sell_price.append(stock1[i])
 
-            stock2_owned += cur_score * const
-            netGains -= cur_score * stock2[i] * const
+            amount_sold = min(stock1_owned, (portfolio_value * cur_score)/(stock1[i] * const))
+            stock1_owned -= amount_sold
+            portfolio_value += amount_sold * stock1[i]
+
+            buy_time.append(i)
+            buy_price.append(stock2[i])
+
+            amount_bought = min((portfolio_value * cur_score)/(stock2[i] * const), portfolio_value/stock2[i])
+            stock2_owned += amount_bought
+            portfolio_value -= amount_bought * stock2[i]
         elif (case == 2):
-            stock2_owned -= min(stock2_owned, cur_score * const)
-            netGains += cur_score * stock2[i] * const
+            sell_time.append(i)
+            sell_price.append(stock2[i])
 
-            stock1_owned += cur_score * const
-            netGains -= cur_score * stock1[i] * const
+            amount_sold = min(stock2_owned, (portfolio_value * cur_score)/(stock2[i] * const))
+            stock2_owned -= amount_sold
+            portfolio_value += amount_sold * stock2[i]
 
-    # netGains += stock1_owned * stock1[len(ratio) - 1] + stock2_owned * stock2[len(ratio) - 1]
+            buy_time.append(i)
+            buy_price.append(stock1[i])
 
-    print(netGains)
+            amount_bought = min((portfolio_value * cur_score)/(stock1[i] * const), portfolio_value/stock1[i])
+            stock1_owned += amount_bought
+            portfolio_value -= amount_bought * stock1[i]
+
+    portfolio_value += stock1_owned * stock1[len(ratio) - 1] + stock2_owned * stock2[len(ratio) - 1]
+
+    print(portfolio_value)
     print(stock1_owned)
     print(stock2_owned)
+    plt.plot(stock1)
+    plt.plot(stock2)
+    plt.scatter(buy_time,buy_price, marker= 6,color ='green')
+    plt.scatter(sell_time, sell_price, marker =7, color = 'red')
+    plt.show()
+
+    if (model == 2):
+        moving_average_lst, moving_sd_lst, upper_band, lower_band = bollinger_bands(ratio,20)
+        plt.plot(upper_band)
+        plt.plot(lower_band)
+        plt.plot(ratio)
+        plt.show()
+
 
 
 def main():
     start_pointer = 2
-    end_pointer = 638
+    end_pointer = 1393
     stock_series = cointegration.get_data(start_pointer, end_pointer)
     tickers, pairs, p_values, coint_sec = cointegration.perform_coint(start_pointer, end_pointer)
 
@@ -117,8 +150,8 @@ def main():
     ratio = np.divide(stock_series[pairs[1][0]].tolist(), stock_series[pairs[1][1]].tolist())
 
     # testing_moving(ratio, stock1, stock2, 1)
-    testing(ratio, stock1, stock2, 1, 1)
-    testing(ratio, stock1, stock2, 2, 1)
+    testing(639, ratio, stock1, stock2, 2, 100000, 10)
+
 
 
 main()
