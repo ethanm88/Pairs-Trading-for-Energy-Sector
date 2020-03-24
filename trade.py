@@ -6,24 +6,22 @@ import numpy as np
 import cointegration
 import statistics
 
-# to do
-# 5 day moving average, more than 1 pair, 100,000
 
 
 import matplotlib.pyplot as plt
 
 
-def mean(lst):
-    return sum(lst) / len(lst)
+def get_mean(lst, start, end):
+    return sum(lst[start:(end+1)]) / len(lst[start:(end+1)])
 
 
-def stan_dev(lst):
-    return statistics.pstdev(lst)
+def get_stan_dev(lst, start, end):
+    return statistics.pstdev(lst[start: (end+1)])
 
 
-def z_score(val1, val2, lst):
+def z_score(val1, val2, lst, start, end):
     ratio = val1 / val2
-    return (ratio - mean(lst)) / (stan_dev(lst))
+    return (ratio - get_mean(lst, start, end)) / (get_stan_dev(lst, start, end))
 
 
 def get_moving_average(ratio_lst, window_size):
@@ -33,7 +31,7 @@ def get_moving_average(ratio_lst, window_size):
     return moving_average, moving_average_lst
 
 
-def bollinger_bands(ratio_lst, window_size, num_sd=1.4):
+def bollinger_bands(ratio_lst, window_size, num_sd=1):
     ratio = pd.DataFrame(ratio_lst)
     moving_average, moving_average_lst = get_moving_average(ratio_lst, window_size)
     moving_sd = ratio.rolling(window=window_size).std()
@@ -62,8 +60,8 @@ def trade_moving(ratio, stock1, stock2, index, window_size=20, short_window_size
     return case, multiplier
 
 
-def trade_simple(ratio, stock1, stock2, index):
-    cur_score = z_score(stock1[index], stock2[index], ratio)
+def trade_simple(ratio, stock1, stock2, index, start, end):
+    cur_score = z_score(stock1[index], stock2[index], ratio, start, end)
     case = 0
     if (cur_score > 1):
         case = 1
@@ -73,7 +71,7 @@ def trade_simple(ratio, stock1, stock2, index):
     return case, cur_score
 
 
-def testing(start,ratio, stock1, stock2, model, starting_amount, const): # const should be >5
+def testing(train_start, start,ratio, stock1, stock2, model, starting_amount, const): # const should be >=5
     portfolio_value = starting_amount
     stock1_owned = 0
     stock2_owned = 0
@@ -84,9 +82,8 @@ def testing(start,ratio, stock1, stock2, model, starting_amount, const): # const
     sell_time = []
     sell_price = []
     for i in range(start, len(ratio)):
-        print(portfolio_value)
         if (model == 1):  # simple
-            case, cur_score = trade_simple(ratio, stock1, stock2, i)
+            case, cur_score = trade_simple(ratio, stock1, stock2, i, train_start, start-1)
         else:
             case, cur_score = trade_moving(ratio, stock1, stock2, i)
         if (case == 1):
@@ -119,26 +116,27 @@ def testing(start,ratio, stock1, stock2, model, starting_amount, const): # const
             portfolio_value -= amount_bought * stock1[i]
 
     portfolio_value += stock1_owned * stock1[len(ratio) - 1] + stock2_owned * stock2[len(ratio) - 1]
+    if(model == 1):
+        print("Simple Z-Score Model: ")
+    else:
+        print("Moving Average Z-Score Model: ")
+    print("Principal: ", starting_amount)
+    print("Final Portfolio Value: ", portfolio_value)
+    print("Net Profit: ", (portfolio_value-starting_amount))
+    print("Percent Profit: ", ((portfolio_value-starting_amount)/starting_amount))
+    print()
 
-    print(portfolio_value)
-    print(stock1_owned)
-    print(stock2_owned)
+    return buy_time, sell_time, buy_price, sell_price
+
+def graphTrends(stock1, stock2, buy_time, sell_time, buy_price, sell_price):
     plt.plot(stock1)
     plt.plot(stock2)
-    plt.scatter(buy_time,buy_price, marker= 6,color ='green')
-    plt.scatter(sell_time, sell_price, marker =7, color = 'red')
+    plt.scatter(buy_time, buy_price, marker=6, color='green')
+    plt.scatter(sell_time, sell_price, marker=7, color='red')
     plt.show()
 
-    if (model == 2):
-        moving_average_lst, moving_sd_lst, upper_band, lower_band = bollinger_bands(ratio,20)
-        plt.plot(upper_band)
-        plt.plot(lower_band)
-        plt.plot(ratio)
-        plt.show()
-
-
-
 def main():
+
     start_pointer = 2
     end_pointer = 1393
     stock_series = cointegration.get_data(start_pointer, end_pointer)
@@ -150,8 +148,8 @@ def main():
     ratio = np.divide(stock_series[pairs[1][0]].tolist(), stock_series[pairs[1][1]].tolist())
 
     # testing_moving(ratio, stock1, stock2, 1)
-    testing(639, ratio, stock1, stock2, 2, 100000, 10)
-
+    testing(2, 637, ratio, stock1, stock2, 2, 100000, 10)
+    testing(2, 637, ratio, stock1, stock2, 1, 100000, 10)
 
 
 main()
